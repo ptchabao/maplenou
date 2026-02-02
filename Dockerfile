@@ -38,12 +38,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Copy composer files and install dependencies
-COPY composer.json composer.lock ./
+COPY composer.json ./
+COPY composer.lock* ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Copy package files and install Node dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+COPY package.json ./
+COPY package-lock.json* ./
+RUN npm ci --only=production || npm install --production
 
 # Copy application files
 COPY . .
