@@ -3,6 +3,13 @@
 # ==============================
 FROM node:20-alpine AS assets-builder
 
+# Install Python and build dependencies for node-sass
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libsass-dev
+
 WORKDIR /app
 
 # Cache dependencies
