@@ -1,0 +1,106 @@
+/*****************************
+Authentification
+*****************************/
+.login-page {
+  background: url(/images/photo-wide-4.jpg);
+}
+
+.login-posly {
+min-height: 100vh;
+display: flex;
+align-items: center;
+justify-content: center;
+margin: 0 auto;
+background-position: center;
+padding: 30px 12px;
+background-image: url(/images/photo-wide-4.jpg);
+background-size: cover;
+background-position: center center;
+background-repeat: no-repeat; }
+.login-posly .logo {
+  display: block;
+  margin-bottom: 30px;
+  text-align: center;
+  width: 98px;
+  margin-left: auto;
+  margin-right: auto; }
+.login-posly .login-main {
+  width: 450px;
+  padding: 40px;
+  border-radius: 10px;
+  -webkit-box-shadow: 0 0 37px rgba(8, 21, 66, 0.05);
+  box-shadow: 0 0 37px rgba(8, 21, 66, 0.05);
+  margin: 0 auto;
+  background-color: #fff; }
+  @media only screen and (max-width: 575px) {
+    .login-posly .login-main {
+      width: auto;
+      padding: 20px; } }
+  .login-posly .login-main .theme-form h4 {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: #2b2b2b; }
+  .login-posly .login-main .theme-form p {
+    margin-bottom: 25px;
+    font-size: 14px;
+    color: #898989; }
+  .login-posly .login-main .theme-form .form-group {
+    position: relative; }
+    @media only screen and (max-width: 575px) {
+      .login-posly .login-main .theme-form .form-group {
+        margin-bottom: 5px !important; } }
+    .login-posly .login-main .theme-form .form-group label {
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      position: relative; }
+    .login-posly .login-main .theme-form .form-group input {
+      background-color: #f3f3ff;
+      -webkit-transition: all 0.3s ease;
+      transition: all 0.3s ease; }
+    .login-posly .login-main .theme-form .form-group .checkbox input[type="checkbox"] {
+      opacity: 0; }
+    .login-posly .login-main .theme-form .form-group .checkbox label {
+      padding-left: 10px;
+      margin-top: 10px;
+      font-size: 14px;
+      margin-left: 16px; }
+  .login-posly .login-main .theme-form .link {
+    position: absolute;
+    top: 10px;
+    right: 0;
+    font-size: 14px; }
+    @media only screen and (max-width: 575px) {
+      .login-posly .login-main .theme-form .link {
+        position: unset; } }
+
+.checkbox label::before {
+content: "";
+display: inline-block;
+position: absolute;
+width: 19px;
+height: 19px;
+left: 0;
+margin-left: -16px;
+border-radius: 3px;
+background-color: #f9f9fa;
+border: 1px solid #dfdfdf; }
+.checkbox label::after {
+content: "";
+width: 9px;
+height: 9px;
+top: 0;
+left: 0;
+border-radius: 0.05em;
+background-color: var(--accent-color);
+position: absolute;
+transform: scale(0);
+transition: 0.5s transform ease; }
+.checkbox input:checked + label::after {
+transform: scale(1);
+width: 9px;
+height: 9px;
+background: #7366ff;
+left: -11px;
+top: 6px;
+border-radius: 3px; }

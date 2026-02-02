@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maplenou_app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - LOG_CHANNEL=stack
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=maplenou
+      - DB_USERNAME=root
+      - DB_PASSWORD=secure_password
+      - CACHE_DRIVER=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./public/uploads:/var/www/html/public/uploads
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - maplenou_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: maplenou_mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=maplenou
+      - MYSQL_ROOT_PASSWORD=secure_password
+      - MYSQL_PASSWORD=secure_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - maplenou_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: maplenou_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - maplenou_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: maplenou_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=secure_password
+    depends_on:
+      - mysql
+    networks:
+      - maplenou_network
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  maplenou_network:
+    driver: bridge

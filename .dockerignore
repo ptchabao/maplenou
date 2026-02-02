@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Documentation
+README.md
+documentation/
+
+# Logs and cache
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+
+# Vendor and node_modules
+vendor/
+node_modules/
+
+# Development files
+.phpunit.result.cache
+.phpunit.cache
+.php_cs.cache
+.php-cs-fixer.cache
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Composer files
+composer.phar
+
+# Package lock files (keep package.json for npm ci)
+package-lock.json
+
+# Build artifacts
+/public/js/
+/public/css/
+/public/mix-manifest.json
+
+# Test files
+tests/
+
+# Local configuration
+docker-compose.yml
+docker-compose.override.yml
+
+# Documentation zip
+documentation.zip
+
+# Version file
+version.txt
