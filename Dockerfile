@@ -41,8 +41,8 @@ WORKDIR /var/www/html
 COPY composer.json ./
 COPY composer.lock* ./
 
-# Ensure database/seeders directory exists before composer install
-RUN mkdir -p database/seeders
+# Ensure database directories exist before composer install
+RUN mkdir -p database/seeders database/factories
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
