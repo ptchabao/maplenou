@@ -6,8 +6,8 @@ FROM node:20-alpine AS assets-builder
 WORKDIR /app
 
 # Cache dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --frozen-lockfile
+COPY package.json package-lock.json* ./
+RUN npm ci --frozen-lockfile || npm install
 
 # Copy sources & build
 COPY . .
