@@ -10,10 +10,18 @@ RUN apk add --no-cache \
     g++ \
     libsass-dev
 
+# Set Python environment variables for node-gyp
+ENV PYTHON=/usr/bin/python3
+ENV PYTHONPATH=/usr/lib/python3.12/site-packages
+
 WORKDIR /app
 
 # Cache dependencies
 COPY package.json package-lock.json* ./
+
+# Install node-gyp globally first
+RUN npm install -g node-gyp@latest
+
 RUN npm ci --frozen-lockfile || npm install
 
 # Copy sources & build
