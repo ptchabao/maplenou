@@ -41,6 +41,9 @@ WORKDIR /var/www/html
 COPY composer.json ./
 COPY composer.lock* ./
 
+# Copy artisan file needed for composer post-install scripts
+COPY artisan ./
+
 # Ensure database directories exist before composer install
 RUN mkdir -p database/seeders database/factories
 
