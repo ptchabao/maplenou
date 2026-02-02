@@ -40,6 +40,10 @@ WORKDIR /var/www/html
 # Copy composer files and install dependencies
 COPY composer.json ./
 COPY composer.lock* ./
+
+# Ensure database/seeders directory exists before composer install
+RUN mkdir -p database/seeders
+
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Copy package files and install Node dependencies
