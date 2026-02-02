@@ -1,4 +1,21 @@
-# Use PHP 8.1 FPM as base image
+# ==============================
+# STAGE 1: Build Assets (Node.js)
+# ==============================
+FROM node:20-alpine AS assets-builder
+
+WORKDIR /app
+
+# Cache dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --frozen-lockfile
+
+# Copy sources & build
+COPY . .
+RUN npm run production
+
+# ==============================
+# STAGE 2: PHP + Nginx (Laravel)
+# ==============================
 FROM php:8.1-fpm-alpine
 
 # Install system dependencies
@@ -13,9 +30,7 @@ RUN apk add --no-cache \
     libpng-dev \
     freetype-dev \
     libxml2-dev \
-    oniguruma-dev \
-    nodejs \
-    npm
+    oniguruma-dev
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -37,9 +52,8 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files and install dependencies
-COPY composer.json ./
-COPY composer.lock* ./
+# Copy composer files first for better caching
+COPY composer.json composer.lock* ./
 
 # Copy artisan file and bootstrap directory needed for composer post-install scripts
 COPY artisan ./
@@ -48,15 +62,30 @@ COPY bootstrap/ ./bootstrap/
 # Ensure database directories exist before composer install
 RUN mkdir -p database/seeders database/factories
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install dependencies without scripts first
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction \
+    --no-scripts \
+    --prefer-dist
 
-# Copy package files and install Node dependencies
-COPY package.json ./
-COPY package-lock.json* ./
-RUN npm ci --only=production || npm install --production
+# Copy application source
+COPY --chown=www-data:www-data . .
 
-# Copy application files
-COPY . .
+# Copy Vite build from assets-builder
+COPY --from=assets-builder \
+    --chown=www-data:www-data \
+    /app/public/js ./public/js
+COPY --from=assets-builder \
+    --chown=www-data:www-data \
+    /app/public/css ./public/css
+COPY --from=assets-builder \
+    --chown=www-data:www-data \
+    /app/public/mix-manifest.json ./public/mix-manifest.json
+
+# Run composer scripts after full copy
+RUN composer dump-autoload --optimize
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
@@ -67,11 +96,12 @@ RUN chown -R www-data:www-data /var/www/html \
 RUN mkdir -p /var/www/html/storage/framework/cache \
     && mkdir -p /var/www/html/storage/framework/sessions \
     && mkdir -p /var/www/html/storage/framework/views \
-    && mkdir -p /var/www/html/storage/logs
+    && mkdir -p /var/www/html/storage/logs \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Build assets
-RUN npm run production \
-    && php artisan config:cache \
+# Optimize Laravel
+RUN php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache
 
@@ -82,6 +112,10 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
 # Expose port
 EXPOSE 80
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost:80 -o /dev/null -s -w '%{http_code}' | grep -q -E '^[23]' || exit 1
 
 # Start supervisord
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
