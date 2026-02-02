@@ -3,28 +3,25 @@
 # ==============================
 FROM node:20-alpine AS assets-builder
 
-# Install Python and build dependencies for node-sass
+# Install Python and build dependencies
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
     libsass-dev
 
-# Set Python environment variables for node-gyp
 ENV PYTHON=/usr/bin/python3
-ENV PYTHONPATH=/usr/lib/python3.12/site-packages
 
 WORKDIR /app
 
-# Cache dependencies
+# Copy package files
 COPY package.json package-lock.json* ./
 
-# Install node-gyp globally first
-RUN npm install -g node-gyp@latest
+# Install dependencies
+RUN npm install -g node-gyp@latest && \
+    npm ci --frozen-lockfile || npm install
 
-RUN npm ci --frozen-lockfile || npm install
-
-# Copy sources & build
+# Copy source and build
 COPY . .
 RUN npm run production
 
@@ -45,11 +42,12 @@ RUN apk add --no-cache \
     libpng-dev \
     freetype-dev \
     libxml2-dev \
-    oniguruma-dev
+    oniguruma-dev \
+    bash
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install -j$(nproc) \
         gd \
         pdo_mysql \
         mysqli \
@@ -64,20 +62,28 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first for better caching
+# Copy composer files
 COPY composer.json composer.lock* ./
 
-# Copy artisan file and bootstrap directory needed for composer post-install scripts
+# Create necessary directories before composer install
+RUN mkdir -p \
+    database/seeders \
+    database/factories \
+    database/migrations \
+    bootstrap/cache \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    storage/app/public
+
+# Copy files needed for composer
 COPY artisan ./
 COPY bootstrap/ ./bootstrap/
 
-# Ensure database directories exist before composer install
-RUN mkdir -p database/seeders database/factories
-
-# Install dependencies without scripts first
+# Install PHP dependencies
 RUN composer install \
     --no-dev \
     --optimize-autoloader \
@@ -85,52 +91,37 @@ RUN composer install \
     --no-scripts \
     --prefer-dist
 
-# Copy application source
+# Copy application files
 COPY --chown=www-data:www-data . .
 
-# Copy Vite build from assets-builder
-COPY --from=assets-builder \
-    --chown=www-data:www-data \
-    /app/public/js ./public/js
-COPY --from=assets-builder \
-    --chown=www-data:www-data \
-    /app/public/css ./public/css
-COPY --from=assets-builder \
-    --chown=www-data:www-data \
-    /app/public/mix-manifest.json ./public/mix-manifest.json
+# Copy built assets from node stage
+COPY --from=assets-builder --chown=www-data:www-data /app/public/js ./public/js
+COPY --from=assets-builder --chown=www-data:www-data /app/public/css ./public/css
 
-# Run composer scripts after full copy
+# Copy manifest (check if it's mix-manifest.json or manifest.json for Vite)
+COPY --from=assets-builder --chown=www-data:www-data /app/public/mix-manifest.json ./public/mix-manifest.json 2>/dev/null || true
+COPY --from=assets-builder --chown=www-data:www-data /app/public/build ./public/build 2>/dev/null || true
+
+# Run composer post-install scripts
 RUN composer dump-autoload --optimize
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
-
-# Create necessary directories
-RUN mkdir -p /var/www/html/storage/framework/cache \
-    && mkdir -p /var/www/html/storage/framework/sessions \
-    && mkdir -p /var/www/html/storage/framework/views \
-    && mkdir -p /var/www/html/storage/logs \
-    && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
-
-# Optimize Laravel
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 775 storage bootstrap/cache
 
 # Copy configuration files
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
-# Expose port
+# Create entrypoint script
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 80
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
-    CMD curl -f http://localhost:80 -o /dev/null -s -w '%{http_code}' | grep -q -E '^[23]' || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost/health || exit 1
 
-# Start supervisord
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
