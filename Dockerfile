@@ -95,11 +95,7 @@ RUN composer install \
 COPY --chown=www-data:www-data . .
 
 # Copy built assets from node stage
-COPY --from=assets-builder --chown=www-data:www-data /app/public/js ./public/js
-COPY --from=assets-builder --chown=www-data:www-data /app/public/css ./public/css
-
-# Copy manifest
-COPY --from=assets-builder --chown=www-data:www-data /app/public/mix-manifest.json ./public/mix-manifest.json
+COPY --from=assets-builder --chown=www-data:www-data /app/public ./public
 
 # Run composer post-install scripts
 RUN composer dump-autoload --optimize
