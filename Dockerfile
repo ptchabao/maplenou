@@ -1,39 +1,31 @@
 # ==============================
-# STAGE 1: Build Assets (Node.js)
+# STAGE 1: Build Frontend Assets
 # ==============================
 FROM node:20-alpine AS assets-builder
 
-# Install Python and build dependencies
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    libsass-dev
-
-ENV PYTHON=/usr/bin/python3
-
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Copy package files first (better cache)
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install -g node-gyp@latest && \
-    npm install
-
-# Copy source and build
+# Copy frontend source
 COPY . .
+
+# Build production assets
 RUN npm run production
 
+
 # ==============================
-# STAGE 2: PHP + Nginx (Laravel)
+# STAGE 2: PHP + Nginx + Supervisor
 # ==============================
 FROM php:8.1-fpm-alpine
 
-# Install system dependencies
+# System dependencies
 RUN apk add --no-cache \
     nginx \
     supervisor \
+    bash \
     curl \
     libzip-dev \
     zip \
@@ -42,10 +34,9 @@ RUN apk add --no-cache \
     libpng-dev \
     freetype-dev \
     libxml2-dev \
-    oniguruma-dev \
-    bash
+    oniguruma-dev
 
-# Install PHP extensions
+# PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     docker-php-ext-install -j$(nproc) \
     gd \
@@ -59,27 +50,24 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     dom \
     simplexml
 
-# Install Composer
+# Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
 # Copy composer files
-COPY composer.json composer.lock* ./
+COPY composer.json composer.lock ./
 
-# Create necessary directories before composer install
+# Required Laravel directories
 RUN mkdir -p \
-    database/seeders \
-    database/factories \
-    database/migrations \
     bootstrap/cache \
+    storage/app/public \
     storage/framework/cache \
     storage/framework/sessions \
     storage/framework/views \
-    storage/logs \
-    storage/app/public
+    storage/logs
 
-# Copy files needed for composer
+# Minimal Laravel files needed for composer
 COPY artisan ./
 COPY bootstrap/ ./bootstrap/
 
@@ -88,34 +76,33 @@ RUN composer install \
     --no-dev \
     --optimize-autoloader \
     --no-interaction \
-    --no-scripts \
     --prefer-dist
 
-# Copy application files
+# Copy full source
 COPY --chown=www-data:www-data . .
 
-# Copy built assets from node stage
+# Copy frontend assets from Node build
 COPY --from=assets-builder --chown=www-data:www-data /app/public ./public
 
-# Run composer post-install scripts
+# Optimize autoload
 RUN composer dump-autoload --optimize
 
-# Set permissions
+# Permissions
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 storage bootstrap/cache
 
-# Copy configuration files
+# Configuration files
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
-# Create entrypoint script
+# Entrypoint
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
     CMD curl -f http://localhost/health || exit 1
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
