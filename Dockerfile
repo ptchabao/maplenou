@@ -48,16 +48,16 @@ RUN apk add --no-cache \
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     docker-php-ext-install -j$(nproc) \
-        gd \
-        pdo_mysql \
-        mysqli \
-        zip \
-        intl \
-        bcmath \
-        opcache \
-        xml \
-        dom \
-        simplexml
+    gd \
+    pdo_mysql \
+    mysqli \
+    zip \
+    intl \
+    bcmath \
+    opcache \
+    xml \
+    dom \
+    simplexml
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -98,9 +98,8 @@ COPY --chown=www-data:www-data . .
 COPY --from=assets-builder --chown=www-data:www-data /app/public/js ./public/js
 COPY --from=assets-builder --chown=www-data:www-data /app/public/css ./public/css
 
-# Copy manifest (check if it's mix-manifest.json or manifest.json for Vite)
-COPY --from=assets-builder --chown=www-data:www-data /app/public/mix-manifest.json ./public/mix-manifest.json 2>/dev/null || true
-COPY --from=assets-builder --chown=www-data:www-data /app/public/build ./public/build 2>/dev/null || true
+# Copy manifest
+COPY --from=assets-builder --chown=www-data:www-data /app/public/mix-manifest.json ./public/mix-manifest.json
 
 # Run composer post-install scripts
 RUN composer dump-autoload --optimize

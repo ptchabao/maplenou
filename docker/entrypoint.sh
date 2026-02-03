@@ -10,6 +10,10 @@ if [ ! -z "$DB_HOST" ]; then
     echo "Database is ready!"
 fi
 
+# Fix permissions for storage and cache
+echo "Fixing permissions..."
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 # Run migrations (only if APP_ENV is not local)
 if [ "$RUN_MIGRATIONS" = "true" ]; then
     echo "Running migrations..."
