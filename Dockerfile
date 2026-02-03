@@ -19,7 +19,7 @@ COPY package.json package-lock.json* ./
 
 # Install dependencies
 RUN npm install -g node-gyp@latest && \
-    npm ci --frozen-lockfile || npm install
+    npm install
 
 # Copy source and build
 COPY . .
